@@ -170,67 +170,32 @@ jQuery.noConflict();
 		function createEventTimecard() {
 
 			var loginUser = kintone.getLoginUser();
-			var isZimuin;
-			var isSonota;
 
-
-			getIsOrg().then(function() {
-                // ユーザの所属によって異なる処理をする。
-				if(isSonota.check) {
-					console.log("あなたはその他区分です")
-					var createRecordSagyonippo = createRecordSagyonippo_sonota;
+			var createRecordSagyonippo = createRecordSagyonippo_ippan;
+			$('#button-syukkin').off().on('click', function() {
+				$('#button-syukkin').off();
+				if(validateCheck('syukkin')) {
+					createRecordTimecard('syukkin').then(function(respTimecard) {
+						createRecordSagyonippo('syukkin').then(function(respSagyonippo) {
+							restApiCreateRecord('syukkin', {respSagyonippo:respSagyonippo, respTimecard:respTimecard});
+						});
+					});
 				} else {
-					console.log("あなたは一般区分です")
-					var createRecordSagyonippo = createRecordSagyonippo_ippan;
+					window.location.reload();
 				}
+			});
 
-				$('#button-syukkin').off().on('click', function() {
-					$('#button-syukkin').off();
-					if(validateCheck('syukkin')) {
-						createRecordTimecard('syukkin').then(function(respTimecard) {
-						    createRecordSagyonippo('syukkin').then(function(respSagyonippo) {
-								restApiCreateRecord('syukkin', {respSagyonippo:respSagyonippo, respTimecard:respTimecard});
-							});
+			$('#button-taikin').off().on('click',function() {
+				$('#button-taikin').off();
+				if(validateCheck('taikin')) {
+					createRecordTimecard('taikin').then(function(respTimecard) {
+						createRecordSagyonippo('taikin').then(function(respSagyonippo) {
+							restApiCreateRecord('taikin', {respSagyonippo:respSagyonippo, respTimecard:respTimecard});
 						});
-					} else {
-						window.location.reload();
-					}
-				});
-
-				$('#button-taikin').off().on('click',function() {
-					$('#button-taikin').off();
-					if(validateCheck('taikin')) {
-						createRecordTimecard('taikin').then(function(respTimecard) {
-						　　createRecordSagyonippo('taikin').then(function(respSagyonippo) {
-								restApiCreateRecord('taikin', {respSagyonippo:respSagyonippo, respTimecard:respTimecard});
-							});
-						});
-					} else {
-						window.location.reload();
-					}
-				});
-
-				$('#button-itinitiyukyu').off().on('click',function() {
-					$('#button-itinitiyukyu').off();
-					if(validateCheck('itinitiyukyu')) {
-						createRecordSagyonippo('itinitiyukyu').then(function(respSagyonippo) {
-							restApiCreateRecord('itinitiyukyu', {respSagyonippo:respSagyonippo});
-						});
-					} else {
-						window.location.reload();
-					}
-				});
-
-				$('#button-itinitikekkin').off().on('click',function() {
-					$('#button-itinitikekkin').off();
-					if(validateCheck('itinitikekkin')) {
-						createRecordSagyonippo('itinitikekkin').then(function(respSagyonippo) {
-							restApiCreateRecord('itinitikekkin', {respSagyonippo:respSagyonippo});
-						});
-					} else {
-						window.location.reload();
-					}
-				});
+					});
+				} else {
+					window.location.reload();
+				}
 			});
 
 			$('#check-itinitiyasumi').off().on('change',function() {
@@ -239,49 +204,7 @@ jQuery.noConflict();
 
 			function validateCheck(type) {
 				var validate = true;
-
-				// if(type == 'syukkin') {
-				// 	var checkTyokko = jQuery('#check-tyokko').prop("checked");
-				// 	var checkTikokuyukyu = jQuery('#check-tikokuyukyu').prop("checked");
-				// 	if(checkTyokko && checkTikokuyukyu) {
-				// 		alert('直行、遅刻有給の両方が選択されています。');
-				// 		validate = false;
-				// 	}
-				// }
-				// else if(type == 'taikin') {
-				// 	var checkTyokki = jQuery('#check-tyokki').prop("checked");
-				// 	var checkSoutaiyukyu = jQuery('#check-soutaiyukyu').prop("checked");
-				// 	if(checkTyokki && checkSoutaiyukyu) {
-				// 		alert('直帰、早退有給の両方が選択されています。');
-				// 		validate = false;
-				// 	}
-				// }
-
 				return validate;
-			}
-
-            // ユーザは事務員か、その他従業員か判断
-			function getIsOrg() {
-				return new kintone.Promise(function (resolve, reject) {
-					// ユーザの区分を判定
-					var param = {
-						orgcode: [ORGINFO.事務員.CODE],
-						usercode: loginUser.code
-					};
-					checkUserInOrg(param).then(function (resp) {
-						isZimuin = resp;
-
-						// ユーザの区分を判定
-						var param = {
-							orgcode: [ORGINFO.その他従業員.CODE],
-							usercode: loginUser.code
-						};
-						checkUserInOrg(param).then(function (resp) {
-							isSonota = resp;
-							resolve();
-						});
-					});
-				});
 			}
 
 			function createRecordTimecard(type) {
@@ -295,116 +218,39 @@ jQuery.noConflict();
 					getParam.query = '氏名 in ("' + loginUser.code + '") and ( 出勤日 = TODAY() or 退勤日 = TODAY() ) order by 作成日時 desc';
 					var timecardRec = getRecords(getParam);
 
-					var getParam = {};
-					getParam.app = APPINFO.スタッフ管理.APPID;
-					getParam.query = '氏名 in ("' + loginUser.code + '")';
-					console.log(getParam.query)
-					var staffRec = getRecords(getParam);
-					if(staffRec.length) {
-						if(!staffRec[0].所属拠点.value) {
-							processType = 'error';
-							alertMsg = '（タイムカード）あなたの所属拠点がスタッフ管理に設定されていません。';
-							resolve(setResolveParam());
-							return false;
-						}
-					} else {
-						processType = 'error';
-						alertMsg = '（タイムカード）あなたの情報がスタッフ管理に登録されていません。';
-						resolve(setResolveParam());
-						return false;
-					}
+					if(timecardRec.length) {
+						timecardRec = timecardRec[0];
 
-					var getParam = {};
-					getParam.app = APPINFO.拠点マスタ.APPID;
-					getParam.query = '拠点名 = "' + staffRec[0].所属拠点.value + '"';
-					var kyotenRec = getRecords(getParam);
-					if(kyotenRec.length) {
-						if(!kyotenRec[0].緯度.value || !kyotenRec[0].経度.value) {
-							processType = 'error';
-							alertMsg = '（タイムカード）あなたの所属拠点に緯度経度が設定されていません。';
-							resolve(setResolveParam());
-							return false;
-						} else if(!kyotenRec[0].許容誤差.value) {
-							processType = 'error';
-							alertMsg = '（タイムカード）あなたの所属拠点に許容誤差が設定されていません。';
-							resolve(setResolveParam());
-							return false;
-						}
-					} else {
-						processType = 'error';
-						alertMsg = '（タイムカード）あなたの所属拠点が拠点マスタに登録されていません。';
-						resolve(setResolveParam());
-						return false;
-					}
-
-					if(!checkGeolocation()) {
-						window.location.reload();
-						return false;
-					}
-					getGeolocation().then(function(data) {
-						var lat = Number(data.latitude).toFixed(6);
-						var lng = Number(data.longitude).toFixed(6);
-
-						if(timecardRec.length) {
-							timecardRec = timecardRec[0];
-
-							// 出勤時刻：あり
-							// 退勤時刻：なし
-							if(
-								timecardRec['出勤時刻'].value &&
-								!timecardRec['退勤時刻'].value
-							) {
-								if(type == 'syukkin') {
-									processType = 'error';
-									alertMsg = '（タイムカード）すでに出勤がされています。ご確認ください';
-								}
-								else if(type == 'taikin') {
-									processType = 'put';
-									setTaikinBody();
-								}
-							}
-							// 出勤時刻：なし
-							// 退勤時刻：あり
-							else if(
-								!timecardRec['出勤時刻'].value &&
-								timecardRec['退勤時刻'].value
-							) {
+						// 出勤時刻：あり
+						// 退勤時刻：なし
+						if(
+							timecardRec['出勤時刻'].value &&
+							!timecardRec['退勤時刻'].value
+						) {
+							if(type == 'syukkin') {
 								processType = 'error';
-								alertMsg = '（タイムカード）すでに退勤がされています。ご確認ください';
+								alertMsg = '（タイムカード）すでに出勤がされています。ご確認ください';
 							}
-							// 出勤時刻：あり
-							// 退勤時刻：あり
-							else if(
-								timecardRec['出勤時刻'].value &&
-								timecardRec['退勤時刻'].value
-							) {
-								if(type == 'syukkin') {
-									processType = 'post';
-									setSyukkinBody();
-								}
-								else if(type == 'taikin') {
-									processType = 'error';
-									alertMsg = '（タイムカード）出勤時刻が設定されていません。ご確認ください';
-									// setTaikinBody();
-								}
+							else if(type == 'taikin') {
+								processType = 'put';
+								setTaikinBody();
 							}
-							// 出勤時刻：なし
-							// 退勤時刻：なし
-							else if(
-								!timecardRec['出勤時刻'].value &&
-								!timecardRec['退勤時刻'].value
-							) {
-								if(type == 'syukkin') {
-									processType = 'put';
-									setSyukkinBody();
-								}
-								else if(type == 'taikin') {
-									processType = 'error';
-									alertMsg = '（タイムカード）出勤時刻が設定されていません。ご確認ください';
-									// setTaikinBody();
-								}
-							}
-						} else {
+						}
+						// 出勤時刻：なし
+						// 退勤時刻：あり
+						else if(
+							!timecardRec['出勤時刻'].value &&
+							timecardRec['退勤時刻'].value
+						) {
+							processType = 'error';
+							alertMsg = '（タイムカード）すでに退勤がされています。ご確認ください';
+						}
+						// 出勤時刻：あり
+						// 退勤時刻：あり
+						else if(
+							timecardRec['出勤時刻'].value &&
+							timecardRec['退勤時刻'].value
+						) {
 							if(type == 'syukkin') {
 								processType = 'post';
 								setSyukkinBody();
@@ -415,59 +261,59 @@ jQuery.noConflict();
 								// setTaikinBody();
 							}
 						}
-
-						resolve(setResolveParam());
-
-						function setSyukkinBody() {
-							timecardBody.氏名 = { value : [{ code : loginUser.code }] };
-							timecardBody.出勤日 = { value : moment().format('YYYY-MM-DD') };
-							timecardBody.出勤時刻 = { value : moment().format('HH:mm') };
-							timecardBody.出勤緯度 = { value : lat };
-							timecardBody.出勤経度 = { value : lng };
-							timecardBody.出勤マップURL = { value : 'https://www.google.com/maps?q=' + lat + ',' + lng };
-
-							var checked = jQuery('#check-tyokko').prop("checked");
-							if(checked) {
-								timecardBody.直行 = { value : ['直行'] };
-							} else {
-								//許容誤差
-								var kyoyoDistance = Number(kyotenRec[0].許容誤差.value);
-								var latlng = {
-									lat1 : lat,
-									lng1 : lng,
-									lat2 : Number(kyotenRec[0].緯度.value).toFixed(6),
-									lng2 : Number(kyotenRec[0].経度.value).toFixed(6),
-								}
-								timecardBody.出勤判定 = { value : checkKyoyoDistance(kyoyoDistance, latlng) };
+						// 出勤時刻：なし
+						// 退勤時刻：なし
+						else if(
+							!timecardRec['出勤時刻'].value &&
+							!timecardRec['退勤時刻'].value
+						) {
+							if(type == 'syukkin') {
+								processType = 'put';
+								setSyukkinBody();
+							}
+							else if(type == 'taikin') {
+								processType = 'error';
+								alertMsg = '（タイムカード）出勤時刻が設定されていません。ご確認ください';
+								// setTaikinBody();
 							}
 						}
-
-						function setTaikinBody() {
-							timecardBody.氏名 = { value : [{ code : loginUser.code }] };
-							timecardBody.退勤日 = { value : moment().format('YYYY-MM-DD') };
-							timecardBody.退勤時刻 = { value : moment().format('HH:mm') };
-							timecardBody.退勤緯度= { value : lat };
-							timecardBody.退勤経度 = { value : lng };
-							timecardBody.退勤マップURL = { value : 'https://www.google.com/maps?q=' + lat + ',' + lng };
-
-							var checked = jQuery('#check-tyokki').prop("checked");
-							if(checked) {
-								timecardBody.直帰 = { value : ['直帰'] };
-							} else {
-								//許容誤差
-								var kyoyoDistance = Number(kyotenRec[0].許容誤差.value);
-								var latlng = {
-									lat1 : lat,
-									lng1 : lng,
-									lat2 : Number(kyotenRec[0].緯度.value).toFixed(6),
-									lng2 : Number(kyotenRec[0].経度.value).toFixed(6),
-								}
-								timecardBody.退勤判定 = { value : checkKyoyoDistance(kyoyoDistance, latlng) };
-							}
+					} else {
+						if(type == 'syukkin') {
+							processType = 'post';
+							setSyukkinBody();
 						}
-					}).catch(function() {
-						window.location.reload();
-					});
+						else if(type == 'taikin') {
+							processType = 'error';
+							alertMsg = '（タイムカード）出勤時刻が設定されていません。ご確認ください';
+							// setTaikinBody();
+						}
+					}
+
+					console.log(processType);
+					resolve(setResolveParam());
+
+					function setSyukkinBody() {
+						timecardBody.氏名 = { value : [{ code : loginUser.code }] };
+						timecardBody.出勤日 = { value : moment().format('YYYY-MM-DD') };
+						timecardBody.出勤時刻 = { value : moment().format('HH:mm') };
+
+						var checked = jQuery('#check-tyokko').prop("checked");
+						if(checked) {
+							timecardBody.直行 = { value : ['直行'] };
+						}
+					}
+
+					function setTaikinBody() {
+						timecardBody.氏名 = { value : [{ code : loginUser.code }] };
+						timecardBody.退勤日 = { value : moment().format('YYYY-MM-DD') };
+						timecardBody.退勤時刻 = { value : moment().format('HH:mm') };
+				
+						var checked = jQuery('#check-tyokki').prop("checked");
+						if(checked) {
+							timecardBody.直帰 = { value : ['直帰'] };
+						} 
+				
+					}
 
 
 					function setResolveParam() {
@@ -493,7 +339,6 @@ jQuery.noConflict();
 					var valueTikokuyukyu = [];
 					var valueTyokki = [];
 					var valueSoutaiyukyu = [];
-					var valueSoshikishubetu = [];
 
 					if(checkTyokko) valueTyokko = ['あり'];
 					if(checkTikokuyukyu) valueTikokuyukyu = ['あり'];
@@ -502,14 +347,14 @@ jQuery.noConflict();
 
 					//START 2021.03.01 【新規】勤怠時間等算出処理　担当：武川（REP）
 					var getParam = {};
-					getParam.app = APPINFO.出勤種別.APPID;
+					getParam.app = APPINFO.営業日マスタ.APPID;
 					getParam.query = '日付 = TODAY()';
-					getParam.apiToken = APPINFO.出勤種別.APITOKEN;
+					getParam.apiToken = APPINFO.営業日マスタ.APITOKEN;
 					var work_types = getRecords(getParam);
 
 					if (work_types.length == 0) {
 						processType = 'error';
-						alertMsg = '（作業日報）出勤種別が登録されていません';
+						alertMsg = '（作業日報）営業日マスタに今日の営業日が登録されていません';
 						resolve(setResolveParam());
 						return false;
 					}
@@ -566,23 +411,13 @@ jQuery.noConflict();
 								sagyonippoBody['直帰'] = { value : valueTyokki };
 								sagyonippoBody['早退有給'] = { value : valueSoutaiyukyu };
 
-								if(isZimuin.check) {
-									sagyonippoRec['組織種別'] = { value : '事務員' };
-								}
-								else {
-									sagyonippoRec['組織種別'] = { value : '一般社員' };
-								}
-
 								var workTime = calcWorkTime(
 									moment().format('YYYY-MM-DD'),
-									sagyonippoRec['組織種別'].value,
 									sagyonippoRec['出勤種別'].value,
 									sagyonippoRec['出勤時刻'].value,
 									taikinJikan);
 
-								sagyonippoBody['組織種別'] = { value : sagyonippoRec['組織種別'].value };
 								sagyonippoBody['勤務時間'] = { value : workTime['total'] };
-								//sagyonippoBody['早出時間'] = { value : workTime['early'] };
 								sagyonippoBody['残業時間'] = { value : workTime['over'] };
 								sagyonippoBody['深夜勤務時間'] = { value : workTime['late'] };
 								sagyonippoBody['遅刻時間'] = { value : workTime['late_start'] };
@@ -620,9 +455,6 @@ jQuery.noConflict();
 							}
 							else if(type == 'taikin') {
 								processType = 'error';
-								// sagyonippoBody['退勤時刻'] = { value : moment().format('HH:mm') };
-								// sagyonippoBody['直帰'] = { value : valueTyokki };
-								// sagyonippoBody['早退有給'] = { value : valueSoutaiyukyu };
 								alertMsg = '（作業日報）出勤時刻が設定されていません。ご確認ください';
 							}
 							else if(type == 'itinitiyukyu') {
@@ -651,9 +483,6 @@ jQuery.noConflict();
 							}
 							else if(type == 'taikin') {
 								processType = 'error';
-								// sagyonippoBody['退勤時刻'] = { value : moment().format('HH:mm') };
-								// sagyonippoBody['直帰'] = { value : valueTyokki };
-								// sagyonippoBody['早退有給'] = { value : valueSoutaiyukyu };
 								alertMsg = '（作業日報）出勤時刻が設定されていません。ご確認ください';
 							}
 							else if(type == 'itinitiyukyu') {
@@ -675,9 +504,6 @@ jQuery.noConflict();
 						}
 						else if(type == 'taikin') {
 							processType = 'error';
-							// sagyonippoBody['退勤時刻'] = { value : moment().format('HH:mm') };
-							// sagyonippoBody['直帰'] = { value : valueTyokki };
-							// sagyonippoBody['早退有給'] = { value : valueSoutaiyukyu };
 							alertMsg = '（作業日報）出勤時刻が設定されていません。ご確認ください';
 						}
 						else if(type == 'itinitiyukyu') {
@@ -699,105 +525,6 @@ jQuery.noConflict();
 							sagyonippoBody : sagyonippoBody,
 							sagyonippoRec : sagyonippoRec,
 							appId : APPINFO.作業日報.APPID
-						}
-					}
-
-				});
-			}
-
-            /**
-             * その他従業員（アルバイト等）用の作業日報レコード作成処理
-             * @param {string} type - 処理タイプ（'syukkin': 出勤, 'taikin': 退勤）
-             * @returns {Promise} - 処理結果を含むPromiseオブジェクト
-             */
-			function createRecordSagyonippo_sonota(type) {
-				return new kintone.Promise(function (resolve, reject) {
-					var sagyonippoBody = {};
-					var processType = '';
-					var alertMsg = '';
-
-					var getParam = {};
-					getParam.app = 148;
-					getParam.query = '名前 in ("' + loginUser.code + '") and 日付 = TODAY() order by 作成日時 desc';
-					var sagyonippoRec = getRecords(getParam);
-
-					if(sagyonippoRec.length) {
-						sagyonippoRec = sagyonippoRec[0];
-
-						// 始業時刻：あり
-						// 終業時刻：なし
-						if(
-							sagyonippoRec['始業時刻'].value &&
-							!sagyonippoRec['終業時刻'].value
-						) {
-							if(type == 'syukkin') {
-								processType = 'error';
-								alertMsg = '（作業日報アルバイト）すでに出勤がされています。ご確認ください';
-							}
-							else if(type == 'taikin') {
-								processType = 'put';
-								sagyonippoBody['終業時刻'] = { value : moment().format('HH:mm') };
-							}
-						}
-						// 始業時刻：なし
-						// 終業時刻：あり
-						else if(
-							!sagyonippoRec['始業時刻'].value &&
-							sagyonippoRec['終業時刻'].value
-						) {
-							processType = 'error';
-							alertMsg = '（作業日報アルバイト）すでに退勤がされています。ご確認ください';
-						}
-						// 始業時刻：あり
-						// 終業時刻：あり
-						else if(
-							sagyonippoRec['始業時刻'].value &&
-							sagyonippoRec['終業時刻'].value
-						) {
-							if(type == 'syukkin') {
-								processType = 'post';
-								sagyonippoBody['始業時刻'] = { value : moment().format('HH:mm') };
-							}
-							else if(type == 'taikin') {
-								processType = 'error';
-								alertMsg = '（作業日報アルバイト）始業時刻が設定されていません。ご確認ください';
-							}
-						}
-						// 始業時刻：なし
-						// 終業時刻：なし
-						else if(
-							!sagyonippoRec['始業時刻'].value &&
-							!sagyonippoRec['終業時刻'].value
-						) {
-							if(type == 'syukkin') {
-								processType = 'put';
-								sagyonippoBody['始業時刻'] = { value : moment().format('HH:mm') };
-							}
-							else if(type == 'taikin') {
-								processType = 'error';
-								alertMsg = '（作業日報アルバイト）始業時刻が設定されていません。ご確認ください';
-							}
-						}
-					} else {
-						if(type == 'syukkin') {
-							processType = 'post';
-							sagyonippoBody['始業時刻'] = { value : moment().format('HH:mm') };
-						}
-						else if(type == 'taikin') {
-							processType = 'error';
-							alertMsg = '（作業日報アルバイト）始業時刻が設定されていません。ご確認ください';
-						}
-					}
-
-					resolve(setResolveParam());
-
-					function setResolveParam() {
-						return {
-							processType : processType,
-							alertMsg : alertMsg,
-							sagyonippoBody : sagyonippoBody,
-							sagyonippoRec : sagyonippoRec,
-							appId : 148
 						}
 					}
 
